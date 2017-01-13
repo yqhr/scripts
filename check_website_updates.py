@@ -7,6 +7,8 @@ import sys
 import datetime
 import requests
 import smtplib
+import json
+import getpass
 from bs4 import BeautifulSoup
 from email.mime.text import MIMEText
 
@@ -14,7 +16,11 @@ from email.mime.text import MIMEText
 class CheckUpdate():
     def __init__(self):
         self.URL = ""
+        self.conf_json = os.path.abspath(
+            os.path.expanduser("~/check_update/gmail.json"))
         self.session = requests.Session()
+        self.gmail_address = ""
+        self.gmail_password = ""
 
     def GetLM(self):
         header = self.session.head(self.URL)
@@ -80,19 +86,40 @@ class CheckUpdate():
             if LM1 == LM2:
                 return (LM1, False)
 
+    def make_gmail_conf(self):
+        if not os.path.exists(self.conf_json):
+            print("Gmail conf file is not at %s. Make conf file." %
+                  self.conf_json)
+            address = input('Type your gmail address: ')
+            passwd = getpass.getpass(prompt="Type gmail password: ")
+            with open(self.conf_json, "w") as f:
+                json.dump({"gmail_address": address,
+                           "gmail_password": passwd}, f)
+            self.gmail_address = address
+            self.gmail_address = passwd
+
+    def check_gmail_conf(self):
+        if os.path.exists(self.conf_json):
+            with open(self.conf_json, 'r') as f:
+                gmail_conf = json.load(f)
+            self.gmail_address = gmail_conf['gmail_address']
+            self.gmail_password = gmail_conf['gmail_password']
+        else:
+            self.make_gmail_conf()
+
     # quoted from http://qiita.com/HirofumiYashima/items/1b24397c2e915658c984
     def sendGmail(self, to, sub, body):
-        username, password = 'XXXX@gmail.com', 'XXXX'
+        self.check_gmail_conf()
         host, port = 'smtp.gmail.com', 465
         msg = MIMEText(body)
         msg['Subject'] = sub
-        msg['From'] = username
+        msg['From'] = self.gmail_address
         msg['To'] = to
 
         smtp = smtplib.SMTP_SSL(host, port)
         smtp.ehlo()
-        smtp.login(username, password)
-        smtp.mail(username)
+        smtp.login(self.gmail_address, self.gmail_password)
+        smtp.mail(self.gmail_address)
         smtp.rcpt(to)
         smtp.data(msg.as_string())
         smtp.quit()
@@ -101,6 +128,7 @@ class CheckUpdate():
         gURL = sys.argv[1]
         self.URL = gURL
         self.check_update()
+        self.session.close()
 
 
 if __name__ == '__main__':
