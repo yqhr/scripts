@@ -87,16 +87,15 @@ class CheckUpdate():
                 return (LM1, False)
 
     def make_gmail_conf(self):
-        if not os.path.exists(self.conf_json):
-            print("Gmail conf file is not at %s. Make conf file." %
-                  self.conf_json)
-            address = input('Type your gmail address: ')
-            passwd = getpass.getpass(prompt="Type gmail password: ")
-            with open(self.conf_json, "w") as f:
-                json.dump({"gmail_address": address,
-                           "gmail_password": passwd}, f)
-            self.gmail_address = address
-            self.gmail_address = passwd
+        print("Gmail conf file is not at %s. Make conf file." %
+              self.conf_json)
+        address = input('Type your gmail address: ')
+        passwd = getpass.getpass(prompt="Type gmail password: ")
+        with open(self.conf_json, "w") as f:
+            json.dump({"gmail_address": address,
+                       "gmail_password": passwd}, f)
+        self.gmail_address = address
+        self.gmail_address = passwd
 
     def check_gmail_conf(self):
         if os.path.exists(self.conf_json):
