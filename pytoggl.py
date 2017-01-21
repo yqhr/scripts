@@ -16,7 +16,7 @@ class Toggl():
     def __init__(self):
         self.session = requests.session()
         self.rootURL = "https://www.toggl.com/api/v8"
-        self.token_path = "/mnt/c/Users/yhori/.toggl_token"
+        self.token_path = "~/.toggl_token"
         self.api_token = ""
         self.current_task = {}
         self.auth_tuple = ()
