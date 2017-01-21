@@ -15,7 +15,7 @@ class Toggl():
     def __init__(self):
         self.session = requests.session()
         self.rootURL = "https://www.toggl.com/api/v8"
-        self.token_path = "~/.toggl_token"
+        self.token_path = "/mnt/c/Users/yhori/.toggl_token"
         self.api_token = ""
         self.current_task = {}
         self.auth_tuple = ()
@@ -25,14 +25,14 @@ class Toggl():
 
     def GetUserInfo(self):
         if not os.path.exists(self.token_path):
-            print ("There does not seem a token file."
-                   + " This program will get it from now.")
+            print (
+                "There does not seem a token file. This program will get it from now.")
             mail = input("Type your email in Toggl: ")
             password = getpass.getpass(prompt="Type the password: ")
             print("=> Retrieving your api token from Toggl's API.")
-            r = self.session.get("%s/me" % (self.rootURL),
-                                 auth=(mail, password))
-            gotJSON = json.loads(r.text)
+            URL = "%s/me" % self.rootURL
+            s = self.session.get(URL, auth=(mail, password))
+            gotJSON = json.loads(s.text)
             APIKey = gotJSON['data']['api_token']
             default_wid = gotJSON['data']['default_wid']
             self.WriteUserInfo(APIKey, default_wid)
@@ -62,9 +62,9 @@ class Toggl():
         s = self.session.get(URL, auth=self.auth_tuple)
         self.current_task = json.loads(s.text)
 
-    def CheckTaskStarted(self, entry_json):
-        if isinstance(entry_json, dict):
-            entry = entry_json['data']
+    def CheckTaskStarted(self):
+        if isinstance(self.current_task, dict):
+            entry = self.current_task['data']
             if entry is not None:
                 flag = 'stop' not in entry
                 self.task_running = flag
@@ -77,11 +77,13 @@ class Toggl():
             if 'description' in entry:
                 entry_name = entry['description']
             URL = "%s/time_entries/%s/stop" % (self.rootURL, entry_id)
-            s = self.session.put(URL, headers=self.json_headers,
-                             auth=self.auth_tuple)
+            s = self.session.put(
+                URL, headers=self.json_headers, auth=self.auth_tuple
+            )
             resultJSON = json.loads(s.text)
             finish_time = self.UTC2JST(dtparse(resultJSON['data']['stop']))
-            print("=> Stop the current task: '%s' (at %s)." % (entry_name, finish_time))
+            print("=> Stop the current task: '%s' (at %s)." %
+                  (entry_name, finish_time))
         else:
             print("Failed to stop a task. No task seems to be running.")
 
@@ -96,7 +98,9 @@ class Toggl():
         }
         URL = "%s/time_entries/start" % self.rootURL
         s = self.session.post(
-            URL, data=json.dumps(data), headers=self.json_headers, auth=self.auth_tuple)
+            URL, data=json.dumps(data),
+            headers=self.json_headers, auth=self.auth_tuple
+        )
         resultJSON = json.loads(s.text)
         start_time = self.UTC2JST(dtparse(resultJSON['data']['start']))
         print("=> Start a new task: '%s' (at %s)." % (description, start_time))
@@ -112,7 +116,7 @@ class Toggl():
             print("No task seems to be running.")
 
     def UTC2JST(self, utc_time):
-            return utc_time.astimezone(timezone('Asia/Tokyo'))
+        return utc_time.astimezone(timezone('Asia/Tokyo'))
 
     def main(self):
         parser = argparse.ArgumentParser(
@@ -129,7 +133,7 @@ class Toggl():
         args = vars(parser.parse_args())
         self.SetToken()
         self.RetrieveCurrentTask()
-        self.CheckTaskStarted(self.current_task)
+        self.CheckTaskStarted()
         if args['show']:
             self.ShowCurrentTask()
         if args['stop']:
