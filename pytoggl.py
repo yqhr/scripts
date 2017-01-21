@@ -3,6 +3,7 @@
 
 
 import os
+import sys
 import json
 from pytz import timezone
 import getpass
@@ -119,8 +120,12 @@ class Toggl():
         return utc_time.astimezone(timezone('Asia/Tokyo'))
 
     def main(self):
+        mangle_args = ('show', 'start', 'stop', 'help')
+        arguments=['--%s' % arg if arg in mangle_args else arg for arg in sys.argv[1:]]
         parser = argparse.ArgumentParser(
-            description="Toggl control by python.")
+            description="Toggl control by python.", prog="pytoggl",
+            usage='%(prog)s (start [description] | stop | show | help)'
+        )
         group = parser.add_mutually_exclusive_group(required=True)
         group.add_argument("--start", metavar="description",
                            dest="start", type=str, nargs="?",
@@ -130,20 +135,20 @@ class Toggl():
                            help="Stop a running task.")
         group.add_argument("--show", action="store_true",
                            help="Show a current task.")
-        args = vars(parser.parse_args())
+        args = vars(parser.parse_args(arguments))
         self.SetToken()
-        self.RetrieveCurrentTask()
-        self.CheckTaskStarted()
-        if args['show']:
-            self.ShowCurrentTask()
-        if args['stop']:
-            self.StopCurrentTask()
         if 'start' in args:
             if args['start'] is None:
                 description = ""
             else:
                 description = args['start']
             self.StartNewTask(description)
+        self.RetrieveCurrentTask()
+        self.CheckTaskStarted()
+        if args['show']:
+            self.ShowCurrentTask()
+        if args['stop']:
+            self.StopCurrentTask()
         self.session.close()
 
 
