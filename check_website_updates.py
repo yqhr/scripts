@@ -25,9 +25,15 @@ class CheckUpdate():
     def GetLM(self):
         header = self.session.head(self.URL)
         result = header.headers
-        last_updated_time = datetime.datetime.strptime(
-            result['Last-Modified'], "%a, %d %b %Y %H:%M:%S GMT")
-        return last_updated_time
+        if 'Content-Length' in result:
+            CL = int(result['Content-Length'])
+        if 'Last-Modified' in result:
+            last_updated_time = datetime.datetime.strptime(result['Last-Modified'], "%a, %d %b %Y %H:%M:%S GMT")
+            return (last_updated_time, CL)
+
+        if 'Date' in result:
+            result_date = datetime.datetime.strptime(result['Date'], "%a, %d %b %Y %H:%M:%S GMT")
+            return (result_date, CL)
 
     def GetTitle(self):
         get = self.session.get(self.URL)
@@ -36,26 +42,31 @@ class CheckUpdate():
         return title
 
     def check_update(self):
-        gLM = self.GetLM()
+        gLM, gCL = self.GetLM()
         root_dir = os.path.abspath(os.path.expanduser("~/check_update"))
         sub_dir, file_name = os.path.split(self.URL.split('//')[1])
         if not file_name:
             file_name = "index.html"
         file_dir = "%s/%s" % (root_dir, sub_dir)
-        file_path = "%s/%s.txt" % (file_dir, file_name)
+        file_path = "%s/%s.json" % (file_dir, file_name)
         if not os.path.exists(file_dir):
             os.makedirs(file_dir)
         if not os.path.exists(file_path):
             with open(file_path, "w") as f:
-                f.write("%s" % gLM)
-            print("Given URL is up-to-date.")
+                json.dump({'Last-Modified': str(gLM), 'Content-Length': gCL}, f)
             return False
         else:
             with open(file_path, "r") as f:
-                rLM = f.read()
+                data = json.load(f)
+            rLM = data['Last-Modified']
+            rCL = int(data['Content-Length'])
             fLM = datetime.datetime.strptime(rLM, "%Y-%m-%d %H:%M:%S")
-            LM_latest, flag_update = self.CompareLM(gLM, fLM)
-            if flag_update:
+            if gCL != rCL:
+                flag_CL = True
+            else:
+                flag_CL = False
+            LM_latest, flag_LM = self.CompareLM(gLM, fLM)
+            if flag_LM and flag_CL:
                 title = self.GetTitle()
                 to = " "
                 sub = "[CheckUpdate] '%s' (%s) is updated at %s." % (
@@ -69,7 +80,7 @@ class CheckUpdate():
                     "%s, automatically." % script_name
                 self.sendGmail(to, sub, body)
                 with open(file_path, "w") as f:
-                    f.write("%s" % LM_latest)
+                    json.dump({'Content-Length': gCL, 'Last-Modified': str(LM_latest)}, f)
 
     def CheckTypeDT(self, LM):
         if isinstance(LM, datetime.datetime):
@@ -108,7 +119,6 @@ class CheckUpdate():
 
     # quoted from http://qiita.com/HirofumiYashima/items/1b24397c2e915658c984
     def sendGmail(self, to, sub, body):
-        self.check_gmail_conf()
         host, port = 'smtp.gmail.com', 465
         msg = MIMEText(body)
         msg['Subject'] = sub
@@ -125,6 +135,7 @@ class CheckUpdate():
 
     def main(self):
         gURL = sys.argv[1]
+        self.check_gmail_conf()
         self.URL = gURL
         self.check_update()
         self.session.close()
